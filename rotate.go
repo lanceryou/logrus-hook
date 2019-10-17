@@ -124,7 +124,6 @@ func (r *RotateFile) createFile() (err error) {
 
 	if r.outFh != nil {
 		r.outFh.Close()
-		r.outFh.Sync()
 	}
 
 	r.outFh = fh
