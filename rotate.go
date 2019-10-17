@@ -53,6 +53,12 @@ func WithRotateTime(r time.Duration) Option {
 	}
 }
 
+func WithRotateSize(s int64) Option {
+	return func(o *Options) {
+		o.rotateSize = s
+	}
+}
+
 func NewRotateFile(path string, opts ...Option) *RotateFile {
 	ops := Options{
 		rotateTime: time.Hour,
