@@ -2,6 +2,7 @@ package logrus_hook
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"math"
 	"os"
@@ -21,6 +22,32 @@ const (
 // 文件大小切割
 // 隔日切割
 // 保存时间
+type RotateFiles struct {
+	mutex     sync.Mutex
+	dirPath   string
+	formatter logrus.Formatter
+	levelFile map[logrus.Level]RotateFile
+}
+
+func (r *RotateFiles) Levels() []logrus.Level {
+	return logrus.AllLevels
+}
+
+func (r *RotateFiles) Fire(entry *logrus.Entry) (err error) {
+	rf, ok := r.levelFile[entry.Level]
+	if !ok {
+		return
+	}
+
+	msg, err := r.formatter.Format(entry)
+	if err != nil {
+		return
+	}
+
+	_, err = rf.Write(msg)
+	return
+}
+
 type RotateFile struct {
 	mutex sync.Mutex
 
@@ -85,6 +112,10 @@ func (r *RotateFile) Write(p []byte) (n int, err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
+	return r.write(p)
+}
+
+func (r *RotateFile) write(p []byte) (n int, err error) {
 	err = r.write_nolock()
 	if err != nil {
 		return
@@ -132,9 +163,10 @@ func (r *RotateFile) createFile() (err error) {
 }
 
 func (r *RotateFile) loop() {
+	tc := time.NewTicker(time.Minute)
 	for {
 		select {
-		case <-time.After(time.Minute):
+		case <-tc.C:
 			allFiles := getAllFiles(r.curFn)
 			for _, b := range filterBackFiles(allFiles, r.curFn, r.backTime) {
 				os.Remove(b)
